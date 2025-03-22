@@ -13,7 +13,7 @@ const app = express();
 
 // CORS yapılandırması
 app.use(cors({
-  origin: '*', // Tüm kökenlere izin ver
+  origin: ['https://itemci.vercel.app', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
