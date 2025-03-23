@@ -62,6 +62,49 @@ app.get('/api/listings', (req, res) => {
   });
 });
 
+// Yeni ilan oluşturma endpoint'i
+app.post('/api/listings', (req, res) => {
+  try {
+    console.log('Yeni ilan oluşturma isteği:', req.body);
+    
+    // Gerekli alanları kontrol et
+    const { title, description, price, cryptoCurrency, seller, images } = req.body;
+    
+    if (!title || !description || !price || !seller) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lütfen tüm zorunlu alanları doldurun.'
+      });
+    }
+    
+    // Demo yeni ilan oluştur
+    const newListing = {
+      _id: 'demo_' + Date.now(),
+      title,
+      description,
+      price: Number(price),
+      cryptoCurrency: cryptoCurrency || 'ETH',
+      seller,
+      images: images || [],
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Başarılı yanıt
+    res.status(201).json({
+      success: true,
+      listing: newListing
+    });
+  } catch (error) {
+    console.error('İlan oluşturma hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'İlan oluşturulurken bir hata oluştu.'
+    });
+  }
+});
+
 // Test upload endpoint
 app.post('/api/uploads', (req, res) => {
   const demoImageUrls = [
