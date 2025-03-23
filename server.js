@@ -239,8 +239,11 @@ app.get('/api/deals/seller/:address', (req, res) => {
   const sellerAddress = req.params.address;
   console.log(`${sellerAddress} adresine ait deals istendi`);
   
-  // Boş dizi döndürelim
-  return res.json([]);
+  // Veri formatı standardizasyonu - boş bile olsa bir array dönmeli
+  return res.json({
+    success: true,
+    deals: [] // Boş dizi veya mock veriler
+  });
 });
 
 // 404 handler
