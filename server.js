@@ -29,37 +29,49 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Test endpoint'i
+// Kullanıcının kendi ilanlarını getir
 app.get('/api/listings', (req, res) => {
-  // Demo ilan listesi
-  const listings = [
-    {
-      _id: 'demo1',
-      title: 'Demo Ürün 1',
-      description: 'Bu bir demo üründür',
-      price: 100,
-      seller: '0x123456789',
-      images: ['https://via.placeholder.com/800x600?text=Demo+1'],
-      status: 'active',
-      createdAt: new Date().toISOString()
-    },
-    {
-      _id: 'demo2',
-      title: 'Demo Ürün 2', 
-      description: 'İkinci demo ürün',
-      price: 200,
-      seller: '0x987654321',
-      images: ['https://via.placeholder.com/800x600?text=Demo+2'],
-      status: 'active',
-      createdAt: new Date().toISOString()
-    }
-  ];
+  const { seller } = req.query;
   
-  return res.json({
-    success: true,
-    count: listings.length,
-    listings
-  });
+  // Seller parametresi varsa, sadece o satıcıya ait ilanları filtrele
+  if (seller) {
+    console.log(`${seller} adresine ait ilanlar istendi`);
+    
+    // Demo ilanlar - gerçek uygulamada veritabanından gelecek
+    const filteredListings = [
+      {
+        _id: 'demo_seller_1',
+        title: 'Satıcıya Ait Ürün 1',
+        description: 'Bu bir demo üründür',
+        price: 100,
+        cryptoCurrency: 'ETH',
+        seller: seller,
+        images: ['https://via.placeholder.com/800x600?text=Demo+Seller+1'],
+        status: 'active',
+        createdAt: new Date().toISOString()
+      },
+      {
+        _id: 'demo_seller_2',
+        title: 'Satıcıya Ait Ürün 2', 
+        description: 'İkinci demo ürün',
+        price: 200,
+        cryptoCurrency: 'ETH',
+        seller: seller,
+        images: ['https://via.placeholder.com/800x600?text=Demo+Seller+2'],
+        status: 'active',
+        createdAt: new Date().toISOString()
+      }
+    ];
+    
+    return res.json({
+      success: true,
+      count: filteredListings.length,
+      listings: filteredListings
+    });
+  }
+  
+  // Seller parametresi yoksa, tüm ilanları getir
+  // ... mevcut kod ...
 });
 
 // Yeni ilan oluşturma endpoint'i
