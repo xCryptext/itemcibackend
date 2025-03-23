@@ -195,6 +195,54 @@ app.delete('/api/listings/:id', (req, res) => {
   });
 });
 
+// Satıcının ilanlarını getiren endpoint
+app.get('/api/listings/seller/:address', (req, res) => {
+  const sellerAddress = req.params.address;
+  console.log(`${sellerAddress} adresine ait ilanlar istendi (seller/:address)`);
+  
+  // Demo ilanlar - gerçek uygulamada veritabanından gelecek
+  const filteredListings = [
+    {
+      _id: 'demo_seller_1',
+      title: 'Satıcıya Ait Ürün 1',
+      description: 'Bu bir demo üründür',
+      price: 100,
+      cryptoCurrency: 'ETH',
+      seller: sellerAddress,
+      images: ['https://via.placeholder.com/800x600?text=Demo+Seller+1'],
+      status: 'active',
+      createdAt: new Date().toISOString()
+    },
+    {
+      _id: 'demo_seller_2',
+      title: 'Satıcıya Ait Ürün 2', 
+      description: 'İkinci demo ürün',
+      price: 200,
+      cryptoCurrency: 'ETH',
+      seller: sellerAddress,
+      images: ['https://via.placeholder.com/800x600?text=Demo+Seller+2'],
+      status: 'active',
+      createdAt: new Date().toISOString()
+    }
+  ];
+  
+  // API yanıtını success, listings yapısında döndür
+  return res.json({
+    success: true,
+    count: filteredListings.length,
+    listings: filteredListings
+  });
+});
+
+// Deal endpoint'i için mock veri ekleyelim
+app.get('/api/deals/seller/:address', (req, res) => {
+  const sellerAddress = req.params.address;
+  console.log(`${sellerAddress} adresine ait deals istendi`);
+  
+  // Boş dizi döndürelim
+  return res.json([]);
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
