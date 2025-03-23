@@ -85,6 +85,61 @@ app.get('/debug', (req, res) => {
   });
 });
 
+// İlan detayı endpoint'i
+app.get('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan detayı isteği:', listingId);
+  
+  // Demo ilan örneği oluştur
+  const listing = {
+    _id: listingId,
+    title: 'Demo Ürün Detayı',
+    description: 'Bu bir demo ürün detayıdır. API henüz gerçek veritabanı ile çalışmıyor.',
+    price: 150,
+    cryptoCurrency: 'ETH',
+    seller: '0x123456789abcdef',
+    images: [
+      'https://via.placeholder.com/800x600?text=Demo+Detay+1',
+      'https://via.placeholder.com/800x600?text=Demo+Detay+2'
+    ],
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  return res.json({
+    success: true,
+    listing
+  });
+});
+
+// İlan güncelleme endpoint'i
+app.put('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan güncelleme isteği:', listingId, req.body);
+  
+  // Demo güncelleme yanıtı
+  return res.json({
+    success: true,
+    listing: {
+      _id: listingId,
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    }
+  });
+});
+
+// İlan silme endpoint'i
+app.delete('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan silme isteği:', listingId);
+  
+  return res.json({
+    success: true,
+    message: 'İlan başarıyla silindi'
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
