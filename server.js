@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./server/db');
 const listingsRoutes = require('./server/routes/listings');
+const uploadsRoutes = require('./server/routes/uploads');
 
 // Ortam değişkenlerini yükle
 dotenv.config();
@@ -33,6 +34,10 @@ connectDB();
 
 // API rotalarını tanımla
 app.use('/api/listings', listingsRoutes);
+app.use('/api/uploads', uploadsRoutes);
+
+// Upload klasörünü statik dosya olarak sunma
+app.use('/uploads', express.static(path.join(__dirname, 'server/uploads')));
 
 // Health check endpoint'i
 app.get('/api/health', (req, res) => {
@@ -47,6 +52,20 @@ app.get('/debug', (req, res) => {
     files: require('fs').readdirSync(__dirname),
     mongodbUri: process.env.MONGODB_URI ? "Ayarlanmış" : "Ayarlanmamış"
   });
+});
+
+// Test upload endpoint
+app.post('/api/test-upload', (req, res) => {
+  console.log('Test upload isteği alındı');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body:', req.body);
+  
+  // İstek multipart/form-data mı kontrol et
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    res.status(200).json({ success: true, message: 'Multipart istek alındı' });
+  } else {
+    res.status(400).json({ success: false, message: 'Multipart istek değil' });
+  }
 });
 
 // Sunucuyu başlat
