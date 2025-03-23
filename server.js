@@ -20,16 +20,37 @@ app.use((req, res, next) => {
   next();
 });
 
-// Basit API endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'API is running',
-    timestamp: new Date().toISOString()
-  });
-});
+// Basit in-memory depo
+const inMemoryStore = {
+  listings: [
+    // İlk demo veriler
+    {
+      _id: 'demo_1',
+      title: 'Demo Ürün 1',
+      description: 'Bu bir demo üründür',
+      price: 100,
+      cryptoCurrency: 'ETH',
+      seller: '0x123456789abcdef',
+      images: ['https://via.placeholder.com/800x600?text=Demo+1'],
+      status: 'active',
+      createdAt: new Date().toISOString()
+    },
+    {
+      _id: 'demo_2',
+      title: 'Demo Ürün 2', 
+      description: 'İkinci demo ürün',
+      price: 200,
+      cryptoCurrency: 'ETH',
+      seller: '0x987654321',
+      images: ['https://via.placeholder.com/800x600?text=Demo+2'],
+      status: 'active',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  deals: []
+};
 
-// Kullanıcının kendi ilanlarını getir
+// Genel ilanları getir (tüm veriler)
 app.get('/api/listings', (req, res) => {
   const { seller } = req.query;
   
@@ -37,31 +58,9 @@ app.get('/api/listings', (req, res) => {
   if (seller) {
     console.log(`${seller} adresine ait ilanlar istendi`);
     
-    // Demo ilanlar - gerçek uygulamada veritabanından gelecek
-    const filteredListings = [
-      {
-        _id: 'demo_seller_1',
-        title: 'Satıcıya Ait Ürün 1',
-        description: 'Bu bir demo üründür',
-        price: 100,
-        cryptoCurrency: 'ETH',
-        seller: seller,
-        images: ['https://via.placeholder.com/800x600?text=Demo+Seller+1'],
-        status: 'active',
-        createdAt: new Date().toISOString()
-      },
-      {
-        _id: 'demo_seller_2',
-        title: 'Satıcıya Ait Ürün 2', 
-        description: 'İkinci demo ürün',
-        price: 200,
-        cryptoCurrency: 'ETH',
-        seller: seller,
-        images: ['https://via.placeholder.com/800x600?text=Demo+Seller+2'],
-        status: 'active',
-        createdAt: new Date().toISOString()
-      }
-    ];
+    const filteredListings = inMemoryStore.listings.filter(
+      listing => listing.seller.toLowerCase() === seller.toLowerCase()
+    );
     
     return res.json({
       success: true,
@@ -70,11 +69,31 @@ app.get('/api/listings', (req, res) => {
     });
   }
   
-  // Seller parametresi yoksa, tüm ilanları getir
-  // ... mevcut kod ...
+  // Tüm ilanları döndür
+  return res.json({
+    success: true,
+    count: inMemoryStore.listings.length,
+    listings: inMemoryStore.listings
+  });
 });
 
-// Yeni ilan oluşturma endpoint'i
+// Belirli bir satıcının ilanlarını getir
+app.get('/api/listings/seller/:address', (req, res) => {
+  const sellerAddress = req.params.address;
+  console.log(`${sellerAddress} adresine ait ilanlar istendi (seller/:address)`);
+  
+  const filteredListings = inMemoryStore.listings.filter(
+    listing => listing.seller.toLowerCase() === sellerAddress.toLowerCase()
+  );
+  
+  return res.json({
+    success: true,
+    count: filteredListings.length,
+    listings: filteredListings
+  });
+});
+
+// Yeni ilan oluşturma
 app.post('/api/listings', (req, res) => {
   try {
     console.log('Yeni ilan oluşturma isteği:', req.body);
@@ -89,9 +108,9 @@ app.post('/api/listings', (req, res) => {
       });
     }
     
-    // Demo yeni ilan oluştur
+    // Yeni ilan oluştur
     const newListing = {
-      _id: 'demo_' + Date.now(),
+      _id: 'listing_' + Date.now(),
       title,
       description,
       price: Number(price),
@@ -102,6 +121,9 @@ app.post('/api/listings', (req, res) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+    
+    // Listeye ekle
+    inMemoryStore.listings.push(newListing);
     
     // Başarılı yanıt
     res.status(201).json({
@@ -115,6 +137,79 @@ app.post('/api/listings', (req, res) => {
       error: 'İlan oluşturulurken bir hata oluştu.'
     });
   }
+});
+
+// İlan güncelleme endpoint'i
+app.put('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan güncelleme isteği:', listingId, req.body);
+  
+  // İlanı bul
+  const index = inMemoryStore.listings.findIndex(listing => listing._id === listingId);
+  
+  if (index === -1) {
+    return res.status(404).json({
+      success: false,
+      error: 'İlan bulunamadı'
+    });
+  }
+  
+  // İlanı güncelle
+  inMemoryStore.listings[index] = {
+    ...inMemoryStore.listings[index],
+    ...req.body,
+    updatedAt: new Date().toISOString()
+  };
+  
+  return res.json({
+    success: true,
+    listing: inMemoryStore.listings[index]
+  });
+});
+
+// İlan silme endpoint'i
+app.delete('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan silme isteği:', listingId);
+  
+  // İlanı bul
+  const index = inMemoryStore.listings.findIndex(listing => listing._id === listingId);
+  
+  if (index === -1) {
+    return res.status(404).json({
+      success: false,
+      error: 'İlan bulunamadı'
+    });
+  }
+  
+  // İlanı sil
+  inMemoryStore.listings.splice(index, 1);
+  
+  return res.json({
+    success: true,
+    message: 'İlan başarıyla silindi'
+  });
+});
+
+// İlan detayını getir
+app.get('/api/listings/:id', (req, res) => {
+  const listingId = req.params.id;
+  console.log('İlan detayı isteği:', listingId);
+  
+  // İlanı bul
+  const listing = inMemoryStore.listings.find(item => item._id === listingId);
+  
+  if (!listing) {
+    return res.status(404).json({
+      success: false,
+      error: 'İlan bulunamadı'
+    });
+  }
+  
+  return res.json({
+    success: true,
+    listing
+  });
 });
 
 // Test upload endpoint
@@ -137,100 +232,6 @@ app.get('/debug', (req, res) => {
     env: process.env.NODE_ENV,
     time: new Date().toISOString(),
     nodeVersion: process.version
-  });
-});
-
-// İlan detayı endpoint'i
-app.get('/api/listings/:id', (req, res) => {
-  const listingId = req.params.id;
-  console.log('İlan detayı isteği:', listingId);
-  
-  // Demo ilan örneği oluştur
-  const listing = {
-    _id: listingId,
-    title: 'Demo Ürün Detayı',
-    description: 'Bu bir demo ürün detayıdır. API henüz gerçek veritabanı ile çalışmıyor.',
-    price: 150,
-    cryptoCurrency: 'ETH',
-    seller: '0x123456789abcdef',
-    images: [
-      'https://via.placeholder.com/800x600?text=Demo+Detay+1',
-      'https://via.placeholder.com/800x600?text=Demo+Detay+2'
-    ],
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  
-  return res.json({
-    success: true,
-    listing
-  });
-});
-
-// İlan güncelleme endpoint'i
-app.put('/api/listings/:id', (req, res) => {
-  const listingId = req.params.id;
-  console.log('İlan güncelleme isteği:', listingId, req.body);
-  
-  // Demo güncelleme yanıtı
-  return res.json({
-    success: true,
-    listing: {
-      _id: listingId,
-      ...req.body,
-      updatedAt: new Date().toISOString()
-    }
-  });
-});
-
-// İlan silme endpoint'i
-app.delete('/api/listings/:id', (req, res) => {
-  const listingId = req.params.id;
-  console.log('İlan silme isteği:', listingId);
-  
-  return res.json({
-    success: true,
-    message: 'İlan başarıyla silindi'
-  });
-});
-
-// Satıcının ilanlarını getiren endpoint
-app.get('/api/listings/seller/:address', (req, res) => {
-  const sellerAddress = req.params.address;
-  console.log(`${sellerAddress} adresine ait ilanlar istendi (seller/:address)`);
-  
-  // Demo ilanlar - gerçek uygulamada veritabanından gelecek
-  const filteredListings = [
-    {
-      _id: 'demo_seller_1',
-      title: 'Satıcıya Ait Ürün 1',
-      description: 'Bu bir demo üründür',
-      price: 100,
-      cryptoCurrency: 'ETH',
-      seller: sellerAddress,
-      images: ['https://via.placeholder.com/800x600?text=Demo+Seller+1'],
-      status: 'active',
-      createdAt: new Date().toISOString()
-    },
-    {
-      _id: 'demo_seller_2',
-      title: 'Satıcıya Ait Ürün 2', 
-      description: 'İkinci demo ürün',
-      price: 200,
-      cryptoCurrency: 'ETH',
-      seller: sellerAddress,
-      images: ['https://via.placeholder.com/800x600?text=Demo+Seller+2'],
-      status: 'active',
-      createdAt: new Date().toISOString()
-    }
-  ];
-  
-  // API yanıtını success, listings yapısında döndür
-  return res.json({
-    success: true,
-    count: filteredListings.length,
-    listings: filteredListings
   });
 });
 
