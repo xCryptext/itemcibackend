@@ -30,13 +30,37 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB bağlantısını başlat
-connectDB();
+// MongoDB bağlantısı gerekli olmayan endpoint'ler
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'success', message: 'API is running' });
+});
+
+// MongoDB bağlantısını asenkron olarak başlat, bağlantı olmadan da çalışabilir
+let dbConnected = false;
+
+(async () => {
+  try {
+    await connectDB();
+    dbConnected = true;
+    console.log('MongoDB bağlantısı başarılı');
+  } catch (error) {
+    console.error('MongoDB bağlantısı başarısız:', error);
+  }
+})();
+
+// MongoDB bağlantısı gerektiren istekler için middleware
+const requireDb = (req, res, next) => {
+  if (!dbConnected) {
+    return res.status(503).json({ 
+      error: 'Veritabanı bağlantısı şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.'
+    });
+  }
+  next();
+};
 
 // API rotalarını tanımla
-app.use('/api/listings', listingsRoutes);
+app.use('/api/listings', requireDb, listingsRoutes);
 app.use('/api/uploads', uploadsRoutes);
-app.use('/api/health', healthRoutes);
 
 // Upload klasörünü statik dosya olarak sunma
 app.use('/uploads', express.static(path.join(__dirname, 'server/uploads')));
@@ -47,13 +71,23 @@ app.get('/api/health', (req, res) => {
 });
 
 // Tanısal bilgi endpoint'i
-app.get('/debug', (req, res) => {
-  res.json({
-    env: process.env.NODE_ENV,
-    workingDirectory: __dirname,
-    files: require('fs').readdirSync(__dirname),
-    mongodbUri: process.env.MONGODB_URI ? "Ayarlanmış" : "Ayarlanmamış"
-  });
+app.get('/debug', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      environment: process.env.NODE_ENV,
+      vercel: process.env.VERCEL === '1' ? 'Yes' : 'No',
+      mongodb_uri_exists: process.env.MONGODB_URI ? 'Yes' : 'No',
+      mongodb_uri_start: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 15) + '...' : 'N/A',
+      server_time: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? null : error.stack
+    });
+  }
 });
 
 // Test upload endpoint
