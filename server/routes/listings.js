@@ -1,133 +1,207 @@
 const express = require('express');
 const router = express.Router();
-const Listing = require('../../models/Listing');
+const Listing = require('../models/Listing');
 const auth = require('../middleware/auth');
 
 // Tüm ilanları getir
 router.get('/', async (req, res) => {
   try {
-    // URL parametrelerinden filtreleri al
-    const { keyword, minPrice, maxPrice, status, sortBy, sortOrder } = req.query;
+    // Query parametrelerini al
+    const { 
+      keyword, 
+      minPrice, 
+      maxPrice, 
+      status = 'active',
+      seller,
+      buyer,
+      sortBy = 'createdAt', 
+      sortOrder = 'desc',
+      page = 1,
+      limit = 10
+    } = req.query;
     
-    // Filtreleme koşullarını oluştur
-    const filter = {};
+    // Filtreleme için sorgu oluştur
+    const query = {};
     
+    // Keyword filtresi (başlık veya açıklama içinde)
     if (keyword) {
-      filter.$or = [
+      query.$or = [
         { title: { $regex: keyword, $options: 'i' } },
         { description: { $regex: keyword, $options: 'i' } }
       ];
     }
     
-    if (minPrice) filter.price = { ...filter.price, $gte: parseFloat(minPrice) };
-    if (maxPrice) filter.price = { ...filter.price, $lte: parseFloat(maxPrice) };
-    if (status) filter.status = status;
-    
-    // Sıralama seçeneklerini oluştur
-    const sort = {};
-    if (sortBy) {
-      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    } else {
-      sort.createdAt = -1; // Varsayılan olarak en yeni ilanlar önce
+    // Fiyat filtresi
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
     }
     
-    const listings = await Listing.find(filter).sort(sort);
-    res.json(listings);
-  } catch (err) {
-    console.error('İlanlar getirilirken hata:', err);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    // Durum filtresi
+    if (status) {
+      query.status = status;
+    }
+    
+    // Satıcı filtresi
+    if (seller) {
+      query.seller = seller.toLowerCase();
+    }
+    
+    // Alıcı filtresi
+    if (buyer) {
+      query.buyer = buyer.toLowerCase();
+    }
+    
+    // Sıralama için sort objesi oluştur
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    
+    // Sayfalama için hesaplamalar
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // İlanları getir
+    const listings = await Listing.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+    
+    // Toplam ilan sayısı
+    const total = await Listing.countDocuments(query);
+    
+    // Yanıt döndür
+    res.json({
+      success: true,
+      count: listings.length,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      listings
+    });
+  } catch (error) {
+    console.error('İlanlar yüklenirken hata:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// ID ile ilan getir
+// Yeni ilan oluştur
+router.post('/', async (req, res) => {
+  try {
+    const { title, description, price, cryptoCurrency, images, seller } = req.body;
+    
+    // Zorunlu alanları kontrol et
+    if (!title || !description || !price || !seller) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Başlık, açıklama, fiyat ve satıcı adresi zorunludur' 
+      });
+    }
+    
+    // Yeni ilan oluştur
+    const listing = new Listing({
+      title,
+      description,
+      price: Number(price),
+      cryptoCurrency: cryptoCurrency || 'ETH',
+      images,
+      seller: seller.toLowerCase(),
+      status: 'active'
+    });
+    
+    // Veritabanına kaydet
+    await listing.save();
+    
+    // Yanıt döndür
+    res.status(201).json({
+      success: true,
+      listing
+    });
+  } catch (error) {
+    console.error('İlan oluşturulurken hata:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Tekil ilan detayı getir
 router.get('/:id', async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id);
     
     if (!listing) {
-      return res.status(404).json({ message: 'İlan bulunamadı' });
+      return res.status(404).json({ success: false, error: 'İlan bulunamadı' });
     }
     
-    res.json(listing);
-  } catch (err) {
-    console.error('İlan detayı getirilirken hata:', err);
-    res.status(500).json({ message: 'Sunucu hatası' });
-  }
-});
-
-// Yeni ilan oluştur (auth middleware kullanarak)
-router.post('/', auth, async (req, res) => {
-  try {
-    const { title, description, price, images, cryptoCurrency, seller } = req.body;
-    
-    // Auth middleware'den gelen kullanıcı ile karşılaştır
-    if (req.user.toLowerCase() !== seller.toLowerCase()) {
-      return res.status(403).json({ message: 'Yetkilendirme hatası' });
-    }
-    
-    const newListing = new Listing({
-      title,
-      description,
-      price,
-      images,
-      cryptoCurrency,
-      seller
+    res.json({
+      success: true,
+      listing
     });
-    
-    const savedListing = await newListing.save();
-    res.status(201).json(savedListing);
-  } catch (err) {
-    console.error('İlan oluşturulurken hata:', err);
-    res.status(500).json({ message: 'Sunucu hatası' });
+  } catch (error) {
+    console.error('İlan detayı yüklenirken hata:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // İlan güncelle
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const listing = await Listing.findById(req.params.id);
+    const { title, description, price, status, buyer, dealId } = req.body;
+    
+    // İlanı bul
+    let listing = await Listing.findById(req.params.id);
     
     if (!listing) {
-      return res.status(404).json({ message: 'İlan bulunamadı' });
+      return res.status(404).json({ success: false, error: 'İlan bulunamadı' });
     }
     
-    // Sadece satıcı kendi ilanını güncelleyebilir
-    if (listing.seller.toLowerCase() !== req.user.toLowerCase()) {
-      return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
-    }
+    // Güncelleme bilgilerini hazırla
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (description) updateData.description = description;
+    if (price) updateData.price = Number(price);
+    if (status) updateData.status = status;
+    if (buyer) updateData.buyer = buyer.toLowerCase();
+    if (dealId) updateData.dealId = dealId;
     
-    const updatedListing = await Listing.findByIdAndUpdate(
+    // Güncelleme tarihini ayarla
+    updateData.updatedAt = Date.now();
+    
+    // İlanı güncelle
+    listing = await Listing.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
-      { new: true }
+      { $set: updateData },
+      { new: true, runValidators: true }
     );
     
-    res.json(updatedListing);
-  } catch (err) {
-    console.error('İlan güncellenirken hata:', err);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    res.json({
+      success: true,
+      listing
+    });
+  } catch (error) {
+    console.error('İlan güncellenirken hata:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // İlan sil
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id);
     
     if (!listing) {
-      return res.status(404).json({ message: 'İlan bulunamadı' });
+      return res.status(404).json({ success: false, error: 'İlan bulunamadı' });
     }
     
-    // Sadece satıcı kendi ilanını silebilir
-    if (listing.seller.toLowerCase() !== req.user.toLowerCase()) {
-      return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
-    }
+    await listing.remove();
     
-    await Listing.findByIdAndDelete(req.params.id);
-    res.json({ message: 'İlan başarıyla silindi' });
-  } catch (err) {
-    console.error('İlan silinirken hata:', err);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    res.json({
+      success: true,
+      message: 'İlan başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('İlan silinirken hata:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

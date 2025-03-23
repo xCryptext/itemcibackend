@@ -2,23 +2,22 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    if (!process.env.MONGODB_URI) {
-      console.error('MONGODB_URI ortam değişkeni ayarlanmamış!');
-      return;
-    }
-    
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true,
+      useUnifiedTopology: true
     });
     
-    console.log(`MongoDB bağlantısı başarılı: ${conn.connection.host}`);
-  } catch (err) {
-    console.error(`MongoDB bağlantı hatası: ${err.message}`);
-    // Serverless ortamda process.exit yapmayın
-    if (process.env.NODE_ENV !== 'production') {
-      process.exit(1);
-    }
+    console.log(`MongoDB Bağlantısı Başarılı: ${conn.connection.host}`);
+    
+    // Test connection
+    const dbStatus = mongoose.connection.readyState;
+    console.log('Veritabanı Durumu:', 
+      ['Bağlantı yok', 'Bağlanıyor', 'Bağlandı', 'Bağlantı kesiliyor'][dbStatus]);
+    
+    return conn;
+  } catch (error) {
+    console.error(`Hata: ${error.message}`);
+    return null;
   }
 };
 
