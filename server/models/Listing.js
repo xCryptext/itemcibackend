@@ -26,12 +26,7 @@ const ListingSchema = new mongoose.Schema({
   },
   images: {
     type: [String],
-    validate: {
-      validator: function(v) {
-        return v.length > 0 && v.length <= 5;
-      },
-      message: 'En az 1, en fazla 5 resim eklenmelidir'
-    }
+    default: []
   },
   seller: {
     type: String,
