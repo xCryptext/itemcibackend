@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Listing = require('../models/Listing');
-const auth = require('../middleware/auth');
 
 // Tüm ilanları getir
 router.get('/', async (req, res) => {
@@ -193,7 +192,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'İlan bulunamadı' });
     }
     
-    await listing.remove();
+    await Listing.deleteOne({ _id: req.params.id });
     
     res.json({
       success: true,

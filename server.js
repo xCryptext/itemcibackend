@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./server/db');
 const listingsRoutes = require('./server/routes/listings');
 const uploadsRoutes = require('./server/routes/uploads');
+const healthRoutes = require('./server/routes/health');
 
 // Ortam değişkenlerini yükle
 dotenv.config();
@@ -35,6 +36,7 @@ connectDB();
 // API rotalarını tanımla
 app.use('/api/listings', listingsRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/health', healthRoutes);
 
 // Upload klasörünü statik dosya olarak sunma
 app.use('/uploads', express.static(path.join(__dirname, 'server/uploads')));
